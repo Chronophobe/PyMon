@@ -35,7 +35,7 @@ class Monster(object):
 
     def heal(self):
         heal = random.randint(5, 20)
-        heal += max(1, self.spec)
+        heal += max(1, self.regen)
         hp = self.HP
         self.HP = min(self.maxHP, self.HP + heal)
         print("%s healed %s HP." % (self.name, round(self.HP - hp, 1)))
@@ -52,9 +52,9 @@ class Monster(object):
         self.atk = round(self.atk + 0.1, 1)
         print("%s reached level %s" % (self.name, self.level))
         print("Stats: ")
-        if self.level % 5 == 0:
+        if self.level % 4 == 0:
             self.evolve()
-        elif self.level % 7 == 0:
+        elif self.level % 6 == 0:
             self.regen += 0.5
             self.spec += 0.5
         self.nextLevel = round(self.nextLevel + self.nextLevel / 2)
@@ -68,7 +68,7 @@ class Monster(object):
             print("3. Poison arrows")
             print("4. Health regeneration")
             print("5. More Health Points")
-            powerup = int(input("Choose your powerup: "))
+            powerup = int(raw_input("Choose your powerup: "))
             if powerup in range(1,6):
                 invalidChoice = False
                 if powerup == 1:
@@ -84,17 +84,25 @@ class Monster(object):
                 print()
                 print(self.stats())
 
-    def suffer(self):
+    def effects(self):
         hp = self.HP
         self.HP = max(0, self.HP - self.decay)
         dif = self.HP - hp
+        hp = self.HP
+        self.HP = min(self.maxHP, self.HP + self.regen)
+        healdif = self.HP - hp
         if self.decay > 10:
             print("%s was greatly hurt by poison. (%sHP)" % (self.name, dif))
         elif self.decay > 5:
             print("%s was hurt by poison. (%sHP)" % (self.name, dif))
         elif self.decay > 0:
             print("%s is suffering from poison. (%sHP)" % (self.name, dif))
+        if self.regen > 0 and self.HP != self.maxHP:
+            print("%s ate some leftovers and was healed (%sHP)" % (self.name, healdif))
         
+    def restore(self):
+        self.decay = 0
+        self.HP = self.maxHP
 
     def stats(self):
         return "--------------------\n HP: %s\n ATK: %s\n DEF: %s\n SPEC: %s\n REGEN: %s\n EXP: %s\%s\n--------------------" % (self.maxHP, self.atk, self.armor, self.spec, self.regen, self.exp, self.nextLevel)
@@ -102,12 +110,12 @@ class Monster(object):
 def clear_console():
     print("\n\n")
     print("%s: %s HP" % (opponent.name, round(opponent.HP, 1)))
-    print("%s: %s HP" % (player.name, round(player.HP, 1)))
+    print("%s: %s HP   Lv. %s" % (player.name, round(player.HP, 1), player.level))
     print("--------------------")
 
 def turn():
     clear_console()
-    player.suffer()
+    player.effects()
 
     print("1. Attack")
     print("2. Heal")
@@ -124,11 +132,11 @@ def turn():
             player.specAttack(opponent)
         
 def ai_turn():
-    opponent.suffer()
+    opponent.effects()
     heal = random.randint(1, 10) >= random.randint(1, 10)
     if opponent.HP / opponent.maxHP < 0.3 and heal:
         opponent.heal()
-    elif player.HP > 67 and opponent.spec > 2:
+    elif player.HP > 67 and opponent.spec > 0:
         opponent.specAttack(player)
     else:
         opponent.attack(player)
@@ -141,14 +149,14 @@ regen = 0.0
 monsters_slain = 0
 
 opponent = Monster("Bobtimus Prime", 1, 1, 100, 0, 0, 0)
-name = input("Your name: ")
+name = raw_input("Your name: ")
 player   = Monster(name, 1.0, 1.0, 125.0, 0.0, 20.0, 0)
 while True:
     turn()
     if opponent.HP == 0:
         player.addExp(10)
         monsters_slain += 1
-        print("Opponent #%s slain!" % monsters_slain)
+        print("Opponent #%s slain! Exp. %s\%s" % (monsters_slain, player.exp, player.nextLevel))
         if monsters_slain % 5 == 0:
             atk += 0.2
             armor += 0.2
@@ -158,7 +166,7 @@ while True:
             spec += 0.5
             regen += 0.5
         opponent = Monster("B. Prime", atk, armor, hp, spec, 0, regen)
-        player.HP = player.maxHP
+        player.restore()
         turn()
 
     ai_turn()
